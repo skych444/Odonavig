@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <title>Image</title>
+  <link rel="stylesheet" href="viewer.css" />
+</head>
+<body>
+  <div id="stage">
+    <img id="image" alt="" draggable="false" />
+    <div id="message" class="message">Chargement…</div>
+  </div>
+
+  <div id="toolbar">
+    <span id="name" class="name"></span>
+    <span class="sep"></span>
+    <button id="prev-page" class="hidden" title="Page précédente">‹</button>
+    <span id="page" class="hidden"></span>
+    <button id="next-page" class="hidden" title="Page suivante">›</button>
+    <button id="zoom-out" title="Dézoomer (-)">−</button>
+    <button id="zoom-value" class="value" title="Taille réelle (1)">100 %</button>
+    <button id="zoom-in" title="Zoomer (+)">+</button>
+    <button id="fit" title="Ajuster à la fenêtre (0)">Ajuster</button>
+    <button id="rotate-left" title="Pivoter à gauche">⟲</button>
+    <button id="rotate-right" title="Pivoter à droite (R)">⟳</button>
+  </div>
+
+  <script src="lib/pako.js"></script>
+  <script src="lib/utif.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>

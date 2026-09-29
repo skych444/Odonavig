@@ -1,0 +1,59 @@
+{
+  "name": "odonavig",
+  "productName": "Odonavig",
+  "version": "1.0.0",
+  "description": "Odonavig - un navigateur web ultra simple",
+  "main": "src/main.js",
+  "author": "Odonavig",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis portable",
+    "dist:dir": "electron-builder --win dir"
+  },
+  "dependencies": {
+    "utif": "^3.1.0"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "fr.odonavig.browser",
+    "productName": "Odonavig",
+    "copyright": "Odonavig",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "node_modules/utif/**/*",
+      "node_modules/pako/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Odonavig",
+      "artifactName": "Odonavig-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "Odonavig-Portable-${version}.exe"
+    },
+    "fileAssociations": [
+      { "ext": "pdf", "name": "Document PDF", "role": "Viewer" },
+      { "ext": ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg", "ico", "avif", "tif", "tiff"], "name": "Image", "role": "Viewer" },
+      { "ext": ["html", "htm"], "name": "Page web", "role": "Viewer" }
+    ]
+  }
+}
