@@ -15,7 +15,7 @@ const state = {
 let nextId = 1;
 
 const els = {
-  sidebar: $('sidebar'),
+  chrome: $('chrome'),
   address: $('address'),
   addressForm: $('address-form'),
   star: $('btn-star'),
@@ -28,7 +28,6 @@ const els = {
   startFavorites: $('start-favorites'),
   error: $('error'),
   errorDetail: $('error-detail'),
-  pageTitle: $('page-title'),
   zoomValue: $('btn-zoom-reset'),
   back: $('btn-back'),
   forward: $('btn-forward'),
@@ -441,7 +440,16 @@ function renderTabs() {
 
     els.tabs.appendChild(li);
   }
+  fitTabs();
 }
+
+// Quand il y a beaucoup d'onglets, ils rétrécissent jusqu'à n'afficher que l'icône
+function fitTabs() {
+  els.tabs.classList.remove('narrow');
+  const first = els.tabs.firstElementChild;
+  if (first && first.getBoundingClientRect().width < 84) els.tabs.classList.add('narrow');
+}
+window.addEventListener('resize', fitTabs);
 
 function updateChrome() {
   const tab = activeTab();
@@ -453,7 +461,6 @@ function updateChrome() {
   document.body.classList.toggle('loading', !!(tab.loading && tab.url));
 
   const title = tab.url ? tab.title || prettyUrl(tab.url) : 'Nouvel onglet';
-  els.pageTitle.textContent = title;
   document.title = `${title} — Odonavig`;
 
   els.zoomValue.textContent = `${Math.round(tab.zoom * 100)} %`;
@@ -485,9 +492,11 @@ function renderFavorites() {
 
     const b = document.createElement('button');
     b.className = 'fav';
-    b.title = `${label}\nClic droit pour retirer`;
+    b.title = `${fav.url}\nClic droit : renommer ou retirer`;
     b.dataset.url = fav.url;
-    b.appendChild(iconElement(fav.icon, fav.url, '', true));
+    const text = document.createElement('span');
+    text.textContent = label;
+    b.append(iconElement(fav.icon, fav.url, '', true), text);
     b.addEventListener('click', (e) => openFavorite(fav, e.ctrlKey || e.metaKey));
     b.addEventListener('auxclick', (e) => {
       if (e.button === 1) openFavorite(fav, true);
@@ -701,22 +710,17 @@ $('find-close').addEventListener('click', closeFind);
 // ---------------------------------------------------------------------------
 // Barre latérale, plein écran, thème
 // ---------------------------------------------------------------------------
-function setSidebarVisible(visible) {
-  document.body.classList.toggle('sidebar-hidden', !visible);
-  api.setStore('sidebarVisible', visible);
+function setFavbarVisible(visible) {
+  document.body.classList.toggle('favbar-hidden', !visible);
+  api.setStore('favbarVisible', visible);
 }
 
-function toggleSidebar() {
-  if (document.body.classList.contains('fullscreen')) {
-    document.body.classList.toggle('peek');
-    return;
-  }
-  setSidebarVisible(document.body.classList.contains('sidebar-hidden'));
+function toggleFavbar() {
+  setFavbarVisible(document.body.classList.contains('favbar-hidden'));
 }
 
 function focusAddress() {
   if (document.body.classList.contains('fullscreen')) document.body.classList.add('peek');
-  else if (document.body.classList.contains('sidebar-hidden')) setSidebarVisible(true);
   const tab = activeTab();
   els.address.value = tab ? tab.url : '';
   els.address.focus();
@@ -731,7 +735,7 @@ function setTheme(theme) {
 }
 
 $('edge-hover').addEventListener('mouseenter', () => document.body.classList.add('peek'));
-els.sidebar.addEventListener('mouseleave', () => {
+els.chrome.addEventListener('mouseleave', () => {
   if (document.activeElement !== els.address) document.body.classList.remove('peek');
 });
 
@@ -795,8 +799,8 @@ function runAction(action) {
     case 'open-file':
       openFile();
       break;
-    case 'toggle-sidebar':
-      toggleSidebar();
+    case 'toggle-favbar':
+      toggleFavbar();
       break;
     case 'fullscreen':
       api.toggleFullscreen();
@@ -823,8 +827,7 @@ $('btn-back').addEventListener('click', () => runAction('back'));
 $('btn-forward').addEventListener('click', () => runAction('forward'));
 $('btn-reload').addEventListener('click', () => runAction('stop-or-reload'));
 $('btn-new-tab').addEventListener('click', () => runAction('new-tab'));
-$('btn-hide-sidebar').addEventListener('click', () => toggleSidebar());
-$('btn-show-sidebar').addEventListener('click', () => toggleSidebar());
+$('btn-favbar').addEventListener('click', () => toggleFavbar());
 $('btn-zoom-in').addEventListener('click', () => runAction('zoom-in'));
 $('btn-zoom-out').addEventListener('click', () => runAction('zoom-out'));
 $('btn-zoom-reset').addEventListener('click', () => runAction('zoom-reset'));
@@ -958,7 +961,7 @@ function saveSession() {
   const data = await api.getStore();
 
   setTheme(data.theme || 'lavande');
-  if (data.sidebarVisible === false) document.body.classList.add('sidebar-hidden');
+  if (data.favbarVisible === false) document.body.classList.add('favbar-hidden');
   state.favorites = Array.isArray(data.favorites) ? data.favorites : [];
   renderFavorites();
 

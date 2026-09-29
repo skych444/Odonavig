@@ -25,9 +25,21 @@ jobs:
         run: npm ci
 
       - name: Construire l'installateur et la version portable
-        run: npx electron-builder --win nsis portable --publish never
+        run: npx electron-builder --win --x64 --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Vérifier que Odonavig démarre sous Windows
+        shell: pwsh
+        run: |
+          $exe = Resolve-Path "dist/win-unpacked/Odonavig.exe"
+          $p = Start-Process -FilePath $exe -PassThru
+          Start-Sleep -Seconds 20
+          if ($p.HasExited) { throw "Odonavig s'est fermé au démarrage (code $($p.ExitCode))" }
+          $window = Get-Process -Id $p.Id | Select-Object -ExpandProperty MainWindowTitle
+          Write-Host "Odonavig tourne (PID $($p.Id)), fenêtre : '$window'"
+          Stop-Process -Id $p.Id -Force
+          Get-Process Odonavig -ErrorAction SilentlyContinue | Stop-Process -Force
 
       - name: Publier les fichiers .exe
         uses: actions/upload-artifact@v4

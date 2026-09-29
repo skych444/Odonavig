@@ -47,7 +47,7 @@ let store = {
   tabs: [],
   activeIndex: 0,
   theme: 'lavande',
-  sidebarVisible: true,
+  favbarVisible: true,
   bounds: null,
   maximized: true,
 };
@@ -136,7 +136,7 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.png'),
     backgroundColor: theme.bg,
     titleBarStyle: 'hidden',
-    titleBarOverlay: process.platform === 'darwin' ? true : { color: theme.bg, symbolColor: theme.fg, height: 44 },
+    titleBarOverlay: process.platform === 'darwin' ? true : { color: theme.bg, symbolColor: theme.fg, height: 40 },
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -224,7 +224,7 @@ function shortcutFor(input) {
   if (key === 'f') return 'find';
   if (key === 'p') return 'print';
   if (key === 'o') return 'open-file';
-  if (key === 's' || key === 'b') return 'toggle-sidebar';
+  if (input.shift && key === 'b') return 'toggle-favbar';
   if (key === '+' || key === '=' || code === 'NumpadAdd' || code === 'Equal') return 'zoom-in';
   if (key === '-' || key === '_' || code === 'NumpadSubtract' || code === 'Minus') return 'zoom-out';
   if (code === 'Digit0' || code === 'Numpad0' || key === '0' || key === 'à') return 'zoom-reset';
@@ -390,7 +390,7 @@ ipcMain.on('store:set', (_e, key, value) => {
     const theme = THEME_COLORS[value] || THEME_COLORS.lavande;
     win.setBackgroundColor(theme.bg);
     try {
-      win.setTitleBarOverlay({ color: theme.bg, symbolColor: theme.fg, height: 44 });
+      win.setTitleBarOverlay({ color: theme.bg, symbolColor: theme.fg, height: 40 });
     } catch {
       // Non pris en charge sur ce système
     }
