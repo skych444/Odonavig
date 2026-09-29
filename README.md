@@ -1,6 +1,6 @@
 # Odonavig
 
-Odonavig est un navigateur web pour **Windows 10 et Windows 11** (64 bits), pensé pour être **ultra simple**. Son style s’inspire d’[Arc](https://arc.net/) (couleurs douces, formes arrondies), avec une disposition classique : les **onglets en haut**, l’adresse juste en dessous, puis la barre des favoris.
+Odonavig est un navigateur web pour **Windows 10 / 11** et **macOS 12 ou plus récent**, pensé pour être **ultra simple**. Son style s’inspire d’[Arc](https://arc.net/) (couleurs douces, formes arrondies), avec une disposition classique : les **onglets en haut**, l’adresse juste en dessous, puis la barre des favoris.
 
 ![Icône](build/icon.png)
 
@@ -20,6 +20,8 @@ Odonavig est un navigateur web pour **Windows 10 et Windows 11** (64 bits), pens
 | ➕ **Et aussi** | Recherche dans la page (`Ctrl` + `F`), impression (`Ctrl` + `P`), téléchargements, menu clic droit en français |
 
 ## Raccourcis clavier
+
+Sur Mac, remplacez `Ctrl` par `⌘`, `Maj` par `⇧` et `F11` par `⌃⌘F`. `⌘ [` et `⌘ ]` servent aussi à revenir en arrière et à avancer.
 
 | Raccourci | Action |
 |---|---|
@@ -58,6 +60,29 @@ Pour publier une version téléchargeable depuis l’onglet **Releases**, créez
 
 > Windows SmartScreen peut afficher un avertissement au premier lancement, car l’application n’est pas signée. Cliquez sur **Informations complémentaires**, puis sur **Exécuter quand même**.
 
+## Version macOS
+
+GitHub Actions construit aussi Odonavig sur un Mac, à chaque envoi de code :
+
+1. Ouvrez l’onglet **Actions**, puis la dernière exécution de **Construire Odonavig (Windows et macOS)**.
+2. Téléchargez l’archive **Odonavig-macOS**. Elle contient :
+   - `Odonavig-1.0.0-mac-arm64.dmg` pour les Mac à puce Apple (M1, M2, M3, M4…) ;
+   - `Odonavig-1.0.0-mac-x64.dmg` pour les Mac à processeur Intel.
+   
+   Pour savoir lequel choisir : menu  → **À propos de ce Mac**, ligne **Puce** (Apple) ou **Processeur** (Intel).
+3. Ouvrez le .dmg et glissez **Odonavig** dans le dossier **Applications**.
+
+**Premier lancement :** l’application n’est pas notariée par Apple, donc macOS la bloque la première fois.
+
+- **macOS 15 (Sequoia) et plus récent :** double-cliquez sur Odonavig, fermez le message, puis ouvrez **Réglages Système → Confidentialité et sécurité**. En bas, cliquez sur **Ouvrir quand même** à côté d’Odonavig et confirmez.
+- **macOS 12 à 14 :** faites un clic droit (ou `Ctrl` + clic) sur Odonavig dans Applications, choisissez **Ouvrir**, puis **Ouvrir** à nouveau.
+- Si macOS indique que l’application « est endommagée », ouvrez le Terminal et tapez :
+  `xattr -dr com.apple.quarantine /Applications/Odonavig.app`
+
+Pour ne plus avoir ces messages, il faudrait signer et notarier l’application avec un compte Apple Developer (99 $ par an).
+
+Sur Mac, Odonavig utilise les boutons de fenêtre et la barre de menus du système (en français), s’ouvre depuis le Finder avec « Ouvrir avec », et reste dans le Dock quand on ferme la fenêtre, comme les autres applications Mac.
+
 ## Développement
 
 Prérequis : [Node.js](https://nodejs.org/) 20 ou plus récent.
@@ -66,6 +91,7 @@ Prérequis : [Node.js](https://nodejs.org/) 20 ou plus récent.
 npm install        # installe les dépendances
 npm start          # lance Odonavig
 npm run dist       # construit l’installateur et la version portable (sous Windows)
+npm run dist:mac   # construit les .dmg (sur un Mac uniquement)
 ```
 
 Sous Linux ou macOS, `npx electron-builder --win portable` construit la version portable. L’installateur NSIS demande Wine.

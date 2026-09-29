@@ -921,7 +921,7 @@ api.on('fullscreen-changed', ({ fullscreen, app }) => {
   document.body.classList.toggle('fullscreen', fullscreen);
   document.body.classList.remove('peek');
   if (!fullscreen) document.body.classList.remove('html-fullscreen');
-  if (fullscreen && app) toast('Plein écran — appuyez sur Échap ou F11 pour quitter', [], 3000);
+  if (fullscreen && app) toast(`Plein écran — appuyez sur Échap ou ${api.platform === 'darwin' ? '⌃⌘F' : 'F11'} pour quitter`, [], 3000);
 });
 api.on('download-done', ({ name, path, state: downloadState }) => {
   if (downloadState === 'completed') {
@@ -956,8 +956,25 @@ function saveSession() {
 // ---------------------------------------------------------------------------
 // Démarrage
 // ---------------------------------------------------------------------------
+// Sur Mac, affiche ⌘ ⇧ ⌥ à la place de Ctrl, Maj et Alt
+function useMacShortcutLabels() {
+  const keys = { Ctrl: '⌘', Maj: '⇧', Alt: '⌥', F11: '⌃⌘F' };
+  for (const kbd of document.querySelectorAll('kbd')) {
+    if (keys[kbd.textContent]) kbd.textContent = keys[kbd.textContent];
+  }
+  for (const el of document.querySelectorAll('[title]')) {
+    el.title = el.title
+      .replace(/Ctrl \+ /g, '⌘ ')
+      .replace(/Maj \+ /g, '⇧ ')
+      .replace(/Alt \+ ←/g, '⌘ [')
+      .replace(/Alt \+ →/g, '⌘ ]')
+      .replace(/F11/g, '⌃⌘F');
+  }
+}
+
 (async function init() {
   document.body.classList.add(`platform-${api.platform}`);
+  if (api.platform === 'darwin') useMacShortcutLabels();
   const data = await api.getStore();
 
   setTheme(data.theme || 'lavande');

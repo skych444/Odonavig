@@ -123,6 +123,85 @@ const THEME_COLORS = {
 let win = null;
 let pendingUrls = [];
 let appFullscreen = false;
+const isMac = process.platform === 'darwin';
+
+// Sur macOS, un menu est indispensable (Quitter, Copier / Coller…).
+// Sur Windows, l'interface se suffit à elle-même : pas de barre de menus.
+function setupMenu() {
+  if (!isMac) {
+    Menu.setApplicationMenu(null);
+    return;
+  }
+  const action = (name) => () => send('shortcut', name);
+  Menu.setApplicationMenu(Menu.buildFromTemplate([
+    {
+      label: 'Odonavig',
+      submenu: [
+        { role: 'about', label: 'À propos d’Odonavig' },
+        { type: 'separator' },
+        { role: 'hide', label: 'Masquer Odonavig' },
+        { role: 'hideOthers', label: 'Masquer les autres' },
+        { role: 'unhide', label: 'Tout afficher' },
+        { type: 'separator' },
+        { role: 'quit', label: 'Quitter Odonavig' },
+      ],
+    },
+    {
+      label: 'Fichier',
+      submenu: [
+        { label: 'Nouvel onglet', accelerator: 'Cmd+T', registerAccelerator: false, click: action('new-tab') },
+        { label: 'Ouvrir un fichier…', accelerator: 'Cmd+O', registerAccelerator: false, click: action('open-file') },
+        { label: 'Rouvrir l’onglet fermé', accelerator: 'Cmd+Shift+T', registerAccelerator: false, click: action('reopen-tab') },
+        { type: 'separator' },
+        { label: 'Fermer l’onglet', accelerator: 'Cmd+W', registerAccelerator: false, click: action('close-tab') },
+        { label: 'Imprimer…', accelerator: 'Cmd+P', registerAccelerator: false, click: action('print') },
+      ],
+    },
+    {
+      label: 'Édition',
+      submenu: [
+        { role: 'undo', label: 'Annuler' },
+        { role: 'redo', label: 'Rétablir' },
+        { type: 'separator' },
+        { role: 'cut', label: 'Couper' },
+        { role: 'copy', label: 'Copier' },
+        { role: 'paste', label: 'Coller' },
+        { role: 'selectAll', label: 'Tout sélectionner' },
+        { type: 'separator' },
+        { label: 'Rechercher dans la page', accelerator: 'Cmd+F', registerAccelerator: false, click: action('find') },
+      ],
+    },
+    {
+      label: 'Présentation',
+      submenu: [
+        { label: 'Actualiser', accelerator: 'Cmd+R', registerAccelerator: false, click: action('reload') },
+        { type: 'separator' },
+        { label: 'Zoomer', accelerator: 'Cmd+Plus', registerAccelerator: false, click: action('zoom-in') },
+        { label: 'Dézoomer', accelerator: 'Cmd+-', registerAccelerator: false, click: action('zoom-out') },
+        { label: 'Taille réelle', accelerator: 'Cmd+0', registerAccelerator: false, click: action('zoom-reset') },
+        { type: 'separator' },
+        { label: 'Barre des favoris', accelerator: 'Cmd+Shift+B', registerAccelerator: false, click: action('toggle-favbar') },
+        { label: 'Plein écran', accelerator: 'Ctrl+Cmd+F', registerAccelerator: false, click: action('fullscreen') },
+      ],
+    },
+    {
+      label: 'Favoris',
+      submenu: [
+        { label: 'Ajouter / retirer des favoris', accelerator: 'Cmd+D', registerAccelerator: false, click: action('bookmark') },
+      ],
+    },
+    {
+      role: 'window',
+      label: 'Fenêtre',
+      submenu: [
+        { role: 'minimize', label: 'Placer dans le Dock' },
+        { role: 'zoom', label: 'Réduire / agrandir' },
+        { type: 'separator' },
+        { role: 'front', label: 'Tout ramener au premier plan' },
+      ],
+    },
+  ]));
+}
 
 function createWindow() {
   const theme = THEME_COLORS[store.theme] || THEME_COLORS.lavande;
@@ -136,7 +215,11 @@ function createWindow() {
     icon: path.join(__dirname, 'assets', 'icon.png'),
     backgroundColor: theme.bg,
     titleBarStyle: 'hidden',
-    titleBarOverlay: process.platform === 'darwin' ? true : { color: theme.bg, symbolColor: theme.fg, height: 40 },
+    // Windows / Linux : boutons natifs dessinés par-dessus la barre d'onglets
+    // macOS : les trois boutons (feux tricolores) sont centrés dans la barre d'onglets
+    ...(isMac
+      ? { trafficLightPosition: { x: 14, y: 13 } }
+      : { titleBarOverlay: { color: theme.bg, symbolColor: theme.fg, height: 40 } }),
     show: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -149,7 +232,7 @@ function createWindow() {
     },
   });
 
-  Menu.setApplicationMenu(null);
+  setupMenu();
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 
   win.once('ready-to-show', () => {
@@ -204,6 +287,9 @@ function shortcutFor(input) {
   const code = input.code || '';
 
   if (key === 'f11') return 'fullscreen';
+  if (input.control && input.meta && key === 'f') return 'fullscreen'; // ⌃⌘F sur Mac
+  if (input.meta && key === '[') return 'back';
+  if (input.meta && key === ']') return 'forward';
   if (key === 'f5') return ctrl ? 'hard-reload' : 'reload';
   if (input.alt && !ctrl && key === 'arrowleft') return 'back';
   if (input.alt && !ctrl && key === 'arrowright') return 'forward';
@@ -386,7 +472,7 @@ ipcMain.handle('store:get', () => store);
 ipcMain.on('store:set', (_e, key, value) => {
   store[key] = value;
   saveStore();
-  if (key === 'theme' && win && process.platform !== 'darwin') {
+  if (key === 'theme' && win && !isMac) {
     const theme = THEME_COLORS[value] || THEME_COLORS.lavande;
     win.setBackgroundColor(theme.bg);
     try {
@@ -446,6 +532,25 @@ ipcMain.on('shell:show-item', (_e, p) => {
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  // macOS : fichiers ouverts depuis le Finder (double-clic, « Ouvrir avec »…)
+  app.on('open-file', (event, filePath) => {
+    event.preventDefault();
+    const url = fileToUrl(filePath);
+    if (win && app.isReady()) {
+      send('open-urls', [url], { background: false });
+      win.show();
+    } else {
+      pendingUrls.push(url);
+      if (app.isReady()) createWindow();
+    }
+  });
+  app.on('open-url', (event, url) => {
+    event.preventDefault();
+    if (!/^https?:/i.test(url)) return;
+    if (win) send('open-urls', [url], { background: false });
+    else pendingUrls.push(url);
+  });
+
   app.on('second-instance', (_event, argv) => {
     const urls = urlsFromArgv(argv);
     if (win) {
@@ -458,7 +563,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(() => {
     loadStore();
     nativeTheme.themeSource = store.theme === 'nuit' ? 'dark' : 'light';
-    pendingUrls = urlsFromArgv(process.argv);
+    pendingUrls = [...pendingUrls, ...urlsFromArgv(process.argv)];
     registerProtocol();
     setupDownloads();
     createWindow();
@@ -467,6 +572,10 @@ if (!app.requestSingleInstanceLock()) {
   app.on('before-quit', saveStoreNow);
   app.on('window-all-closed', () => {
     saveStoreNow();
-    app.quit();
+    // Sur Mac, l'application reste ouverte dans le Dock
+    if (!isMac) app.quit();
+  });
+  app.on('activate', () => {
+    if (!win && app.isReady()) createWindow();
   });
 }

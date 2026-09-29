@@ -9,7 +9,8 @@
   "scripts": {
     "start": "electron .",
     "dist": "electron-builder --win --x64",
-    "dist:dir": "electron-builder --win dir"
+    "dist:dir": "electron-builder --win dir",
+    "dist:mac": "electron-builder --mac"
   },
   "dependencies": {
     "utif": "^3.1.0"
@@ -93,6 +94,65 @@
         ],
         "name": "Page web",
         "role": "Viewer"
+      }
+    ],
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "identity": "-",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "darkModeSupport": true,
+      "minimumSystemVersion": "12.0",
+      "artifactName": "Odonavig-${version}-mac-${arch}.${ext}",
+      "extendInfo": {
+        "NSHumanReadableCopyright": "Odonavig",
+        "LSApplicationCategoryType": "public.app-category.productivity"
+      }
+    },
+    "dmg": {
+      "title": "Odonavig",
+      "artifactName": "Odonavig-${version}-mac-${arch}.dmg",
+      "contents": [
+        {
+          "x": 150,
+          "y": 190
+        },
+        {
+          "x": 390,
+          "y": 190,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
+    },
+    "protocols": [
+      {
+        "name": "Page web",
+        "schemes": [
+          "http",
+          "https"
+        ]
       }
     ]
   }
