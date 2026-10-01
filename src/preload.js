@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('odonavig', {
   filesToUrls: (files) => ipcRenderer.invoke('file:to-url', files.map((f) => webUtils.getPathForFile(f))),
   pathsToUrls: (paths) => ipcRenderer.invoke('file:to-url', paths),
   openPath: (p) => ipcRenderer.send('shell:open-path', p),
+  appInfo: () => ipcRenderer.invoke('app:info'),
+  chooseFolder: () => ipcRenderer.invoke('dialog:choose-folder'),
+  clearData: (what) => ipcRenderer.invoke('data:clear', what),
+  setDefaultBrowser: () => ipcRenderer.invoke('browser:set-default'),
   showItemInFolder: (p) => ipcRenderer.send('shell:show-item', p),
   on: (channel, callback) => {
     const allowed = ['shortcut', 'open-urls', 'fullscreen-changed', 'download-done'];

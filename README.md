@@ -14,8 +14,9 @@ Odonavig est un navigateur web pour **Windows 10 / 11** et **macOS 12 ou plus r�
 | 🔍 **Zoom** | Boutons − / + / 100 %, `Ctrl` + `+`/`-`/`0` ou `Ctrl` + molette |
 | ⛶ **Plein écran** | Bouton ou `F11` (Échap pour quitter). Passez la souris en haut de l’écran pour faire réapparaître les onglets |
 | 📄 **PDF** | Lecteur PDF intégré (zoom, rotation, impression, miniatures) |
-| 🖼️ **Images** | PNG, JPEG, GIF, WebP, AVIF, BMP, SVG, ICO et **TIFF** dans une visionneuse (zoom à la molette, déplacement, rotation, pages TIFF) |
+| 🖼️ **Images** | PNG, JPEG, GIF, WebP, AVIF, BMP, SVG, ICO et **TIFF** dans une visionneuse sur fond noir (zoom à la molette, déplacement, rotation, pages TIFF). Sa barre d’outils s’efface et réapparaît quand la souris passe en bas de l’image |
 | 📂 **Ouvrir un fichier** | Bouton dossier, `Ctrl` + `O`, glisser-déposer, ou « Ouvrir avec… Odonavig » dans Windows |
+| ⚙️ **Paramètres** | Au démarrage (onglets précédents, page d’accueil ou nouvel onglet), page d’accueil et bouton Accueil, moteur de recherche (Google, Bing, DuckDuckGo, Qwant, Ecosia), zoom par défaut, couleurs, dossier de téléchargement, « Ne pas me suivre », effacer le cache et les cookies, navigateur par défaut (Mac) |
 | 🎨 **Couleurs** | 5 thèmes : Lavande, Ciel, Menthe, Pêche et Nuit (sombre) |
 | ➕ **Et aussi** | Recherche dans la page (`Ctrl` + `F`), impression (`Ctrl` + `P`), téléchargements, menu clic droit en français |
 
@@ -38,6 +39,7 @@ Sur Mac, remplacez `Ctrl` par `⌘`, `Maj` par `⇧` et `F11` par `⌃⌘F`. `�
 | `Ctrl` + `F` | Rechercher dans la page |
 | `Ctrl` + `P` | Imprimer |
 | `Alt` + `←` / `→` | Précédent / suivant |
+| `Ctrl` + `,` | Paramètres |
 
 ## Récupérer le fichier .exe
 

@@ -3,7 +3,26 @@ const api = window.odonavig;
 const $ = (id) => document.getElementById(id);
 
 const ZOOM_LEVELS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
-const SEARCH_URL = 'https://www.google.com/search?q=';
+const SEARCH_ENGINES = {
+  google: { name: 'Google', url: 'https://www.google.com/search?q=' },
+  bing: { name: 'Bing', url: 'https://www.bing.com/search?q=' },
+  duckduckgo: { name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=' },
+  qwant: { name: 'Qwant', url: 'https://www.qwant.com/?q=' },
+  ecosia: { name: 'Ecosia', url: 'https://www.ecosia.org/search?q=' },
+};
+const DEFAULT_SETTINGS = {
+  startup: 'restore',
+  homeUrl: '',
+  homeButton: false,
+  newTabPage: 'start',
+  searchEngine: 'google',
+  defaultZoom: 1,
+  askDownload: false,
+  downloadDir: '',
+  doNotTrack: false,
+};
+let settings = { ...DEFAULT_SETTINGS };
+const searchEngine = () => SEARCH_ENGINES[settings.searchEngine] || SEARCH_ENGINES.google;
 
 const state = {
   tabs: [],
@@ -50,7 +69,7 @@ function toUrl(text) {
     return `http://${value}`;
   }
   if (!/\s/.test(value) && /^[^\s/?#]+\.[a-z]{2,}(:\d+)?([/?#].*)?$/i.test(value)) return `https://${value}`;
-  return SEARCH_URL + encodeURIComponent(value);
+  return searchEngine().url + encodeURIComponent(value);
 }
 
 function parseUrl(url) {
@@ -66,7 +85,9 @@ function fileNameOf(url) {
   if (!u) return url;
   if (u.protocol === 'odonavig:' && u.host === 'viewer') {
     const file = u.searchParams.get('file') || '';
-    return file.split(/[\\/]/).pop();
+    if (file) return file.split(/[\\/]/).pop();
+    const remote = parseUrl(u.searchParams.get('url') || '');
+    return remote ? decodeURIComponent(remote.pathname.split('/').pop() || remote.hostname) : 'Image';
   }
   return decodeURIComponent(u.pathname.split('/').pop() || u.pathname);
 }
@@ -156,7 +177,7 @@ function createTab(url = '', options = {}) {
     title: options.title || '',
     favicon: options.favicon || '',
     loading: false,
-    zoom: 1,
+    zoom: Number(settings.defaultZoom) || 1,
     webview: null,
     ready: false,
     error: null,
@@ -753,7 +774,13 @@ function runAction(action) {
 
   switch (action) {
     case 'new-tab':
-      createTab('');
+      openNewTab();
+      break;
+    case 'home':
+      goHome();
+      break;
+    case 'settings':
+      openSettings();
       break;
     case 'close-tab':
       if (tab) closeTab(tab.id);
@@ -836,17 +863,14 @@ $('btn-open-file').addEventListener('click', () => runAction('open-file'));
 $('btn-retry').addEventListener('click', () => runAction('reload'));
 els.star.addEventListener('click', () => runAction('bookmark'));
 
-$('btn-theme').addEventListener('click', () => $('theme-picker').classList.toggle('hidden'));
 for (const b of document.querySelectorAll('#theme-picker button')) {
   b.addEventListener('click', () => {
     setTheme(b.dataset.theme);
     api.setStore('theme', b.dataset.theme);
-    $('theme-picker').classList.add('hidden');
   });
 }
-document.addEventListener('mousedown', (e) => {
-  if (!e.target.closest('#theme-picker') && !e.target.closest('#btn-theme')) $('theme-picker').classList.add('hidden');
-});
+$('btn-settings').addEventListener('click', () => runAction('settings'));
+$('btn-home').addEventListener('click', () => runAction('home'));
 
 $('btn-help').addEventListener('click', () => $('help').classList.remove('hidden'));
 $('help-close').addEventListener('click', () => {
@@ -956,6 +980,183 @@ function saveSession() {
 // ---------------------------------------------------------------------------
 // Démarrage
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Paramètres
+// ---------------------------------------------------------------------------
+function homeUrl() {
+  return settings.homeUrl ? toUrl(settings.homeUrl) : '';
+}
+
+function openNewTab() {
+  createTab(settings.newTabPage === 'home' ? homeUrl() : '');
+}
+
+function goHome() {
+  const tab = activeTab();
+  const url = homeUrl();
+  if (!url) {
+    // Pas de page d'accueil choisie : page Odonavig
+    if (tab && !tab.url) return;
+    createTab('');
+    return;
+  }
+  if (tab) navigate(tab, url);
+  else createTab(url);
+}
+
+function saveSettings() {
+  api.setStore('settings', settings);
+  applySettings();
+}
+
+// Met l'interface à jour selon les paramètres
+function applySettings() {
+  $('btn-home').classList.toggle('hidden', !settings.homeButton);
+  const engine = searchEngine().name;
+  els.address.placeholder = `Rechercher sur ${engine} ou saisir une adresse`;
+  els.startInput.placeholder = `Rechercher sur ${engine} ou saisir une adresse`;
+}
+
+const setEls = {
+  homeUrl: $('set-home-url'),
+  homeButton: $('set-home-button'),
+  newTabHome: $('set-newtab-home'),
+  search: $('set-search'),
+  zoom: $('set-zoom'),
+  favbar: $('set-favbar'),
+  downloadDir: $('set-download-dir'),
+  askDownload: $('set-ask-download'),
+  dnt: $('set-dnt'),
+};
+let appInfo = null;
+
+async function openSettings() {
+  appInfo = appInfo || (await api.appInfo());
+  for (const r of document.querySelectorAll('input[name="startup"]')) r.checked = r.value === settings.startup;
+  setEls.homeUrl.value = settings.homeUrl;
+  setEls.homeButton.checked = settings.homeButton;
+  setEls.newTabHome.checked = settings.newTabPage === 'home';
+  setEls.search.value = settings.searchEngine;
+  setEls.zoom.value = String(settings.defaultZoom);
+  setEls.favbar.checked = !document.body.classList.contains('favbar-hidden');
+  setEls.askDownload.checked = settings.askDownload;
+  setEls.dnt.checked = settings.doNotTrack;
+  setEls.downloadDir.textContent = settings.downloadDir || appInfo.downloads;
+  setEls.downloadDir.title = setEls.downloadDir.textContent;
+  $('set-about').textContent = `Odonavig ${appInfo.version} — moteur Chromium ${appInfo.chrome}`;
+  $('set-default-section').classList.toggle('hidden', !appInfo.canSetDefault);
+  updateDefaultStatus(appInfo.isDefault);
+  $('settings').classList.remove('hidden');
+}
+
+function closeSettings() {
+  if ($('settings').classList.contains('hidden')) return;
+  commitHomeUrl();
+  $('settings').classList.add('hidden');
+}
+
+function updateDefaultStatus(isDefault) {
+  $('set-default-status').textContent = isDefault
+    ? '✅ Odonavig est votre navigateur par défaut'
+    : 'Odonavig n’est pas votre navigateur par défaut';
+  $('set-default-btn').classList.toggle('hidden', isDefault);
+}
+
+function commitHomeUrl() {
+  const value = setEls.homeUrl.value.trim();
+  const url = value ? toUrl(value) : '';
+  // Une recherche n'est pas une page d'accueil valable : on garde le texte tel quel s'il ressemble à une adresse
+  settings.homeUrl = url && !url.startsWith(searchEngine().url) ? url : '';
+  setEls.homeUrl.value = settings.homeUrl;
+  if (value && !settings.homeUrl) toast('Adresse de page d’accueil non valide');
+  saveSettings();
+}
+
+for (const r of document.querySelectorAll('input[name="startup"]')) {
+  r.addEventListener('change', () => {
+    settings.startup = r.value;
+    saveSettings();
+    if (r.value === 'home' && !settings.homeUrl) setEls.homeUrl.focus();
+  });
+}
+setEls.homeUrl.addEventListener('change', commitHomeUrl);
+setEls.homeUrl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') setEls.homeUrl.blur();
+});
+$('set-home-current').addEventListener('click', () => {
+  const tab = activeTab();
+  if (!tab || !tab.url || /^odonavig:/.test(tab.url)) {
+    toast('Ouvrez d’abord la page à utiliser comme page d’accueil');
+    return;
+  }
+  setEls.homeUrl.value = tab.url;
+  commitHomeUrl();
+});
+setEls.homeButton.addEventListener('change', () => {
+  settings.homeButton = setEls.homeButton.checked;
+  saveSettings();
+});
+setEls.newTabHome.addEventListener('change', () => {
+  settings.newTabPage = setEls.newTabHome.checked ? 'home' : 'start';
+  saveSettings();
+});
+setEls.search.addEventListener('change', () => {
+  settings.searchEngine = setEls.search.value;
+  saveSettings();
+});
+setEls.zoom.addEventListener('change', () => {
+  settings.defaultZoom = Number(setEls.zoom.value);
+  saveSettings();
+});
+setEls.favbar.addEventListener('change', () => setFavbarVisible(setEls.favbar.checked));
+setEls.askDownload.addEventListener('change', () => {
+  settings.askDownload = setEls.askDownload.checked;
+  saveSettings();
+});
+setEls.dnt.addEventListener('change', () => {
+  settings.doNotTrack = setEls.dnt.checked;
+  saveSettings();
+});
+$('set-download-change').addEventListener('click', async () => {
+  const dir = await api.chooseFolder();
+  if (!dir) return;
+  settings.downloadDir = dir;
+  setEls.downloadDir.textContent = dir;
+  setEls.downloadDir.title = dir;
+  saveSettings();
+});
+$('set-clear-cache').addEventListener('click', async () => {
+  await api.clearData({ cache: true });
+  toast('Cache vidé');
+});
+$('set-clear-cookies').addEventListener('click', async () => {
+  if (!window.confirm('Effacer les cookies et les données de tous les sites ?\nVous serez déconnecté de vos comptes.')) return;
+  await api.clearData({ cache: true, cookies: true });
+  toast('Cookies et données des sites effacés');
+});
+$('set-default-btn').addEventListener('click', async () => {
+  updateDefaultStatus(await api.setDefaultBrowser());
+});
+$('set-reset').addEventListener('click', () => {
+  if (!window.confirm('Rétablir tous les paramètres par défaut ?\nVos favoris sont conservés.')) return;
+  settings = { ...DEFAULT_SETTINGS };
+  saveSettings();
+  setFavbarVisible(true);
+  setTheme('lavande');
+  api.setStore('theme', 'lavande');
+  openSettings();
+});
+$('settings-close').addEventListener('click', closeSettings);
+$('settings').addEventListener('mousedown', (e) => {
+  if (e.target === $('settings')) closeSettings();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeSettings();
+    if (!$('help').classList.contains('hidden')) $('help-close').click();
+  }
+});
+
 // Sur Mac, affiche ⌘ ⇧ ⌥ à la place de Ctrl, Maj et Alt
 function useMacShortcutLabels() {
   const keys = { Ctrl: '⌘', Maj: '⇧', Alt: '⌥', F11: '⌃⌘F' };
@@ -977,6 +1178,8 @@ function useMacShortcutLabels() {
   if (api.platform === 'darwin') useMacShortcutLabels();
   const data = await api.getStore();
 
+  settings = { ...DEFAULT_SETTINGS, ...(data.settings || {}) };
+  applySettings();
   setTheme(data.theme || 'lavande');
   if (data.favbarVisible === false) document.body.classList.add('favbar-hidden');
   state.favorites = Array.isArray(data.favorites) ? data.favorites : [];
@@ -990,6 +1193,8 @@ function useMacShortcutLabels() {
   files.forEach((f, i) => fileMap.set(f, fileUrls[i]));
 
   const restored = [];
+  // Selon « Au démarrage » : onglets précédents, page d'accueil ou nouvel onglet
+  if (settings.startup !== 'restore') saved.length = 0;
   for (const t of saved) {
     const url = t.file ? fileMap.get(t.file) : t.url;
     if (!url) continue;
@@ -1002,6 +1207,8 @@ function useMacShortcutLabels() {
   } else if (restored.length) {
     const index = Math.min(data.activeIndex || 0, restored.length - 1);
     activateTab(restored[index].id);
+  } else if (settings.startup === 'home') {
+    createTab(homeUrl());
   } else {
     createTab('');
   }

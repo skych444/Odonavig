@@ -2,9 +2,13 @@
 const params = new URLSearchParams(location.search);
 const filePath = params.get('file') || '';
 const token = params.get('t') || '';
-const fileName = filePath.split(/[\\/]/).pop();
+// Image locale (file) ou image d'un site web (url)
+const remoteUrl = /^https?:\/\//i.test(params.get('url') || '') ? params.get('url') : '';
+const fileName = filePath
+  ? filePath.split(/[\\/]/).pop()
+  : decodeURIComponent((remoteUrl.split(/[?#]/)[0].split('/').pop() || 'Image'));
 const ext = (fileName.split('.').pop() || '').toLowerCase();
-const source = `odonavig://viewer/file?path=${encodeURIComponent(filePath)}&t=${encodeURIComponent(token)}`;
+const source = remoteUrl || `odonavig://viewer/file?path=${encodeURIComponent(filePath)}&t=${encodeURIComponent(token)}`;
 
 const stage = document.getElementById('stage');
 const img = document.getElementById('image');
@@ -66,6 +70,7 @@ img.addEventListener('load', () => {
   img.style.visibility = 'visible';
   view.fit = true;
   apply();
+  showToolbar(2500);
 });
 img.addEventListener('error', () => showMessage('Impossible d’afficher cette image.'));
 
@@ -103,7 +108,7 @@ async function loadTiff() {
 }
 
 // --- Chargement --------------------------------------------------------------
-if (!filePath) {
+if (!filePath && !remoteUrl) {
   showMessage('Aucune image à afficher.');
 } else if (ext === 'tif' || ext === 'tiff') {
   loadTiff().catch(() => showMessage('Impossible de lire ce fichier TIFF.'));
@@ -184,3 +189,23 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('resize', () => {
   if (view.fit) apply();
 });
+
+// --- Barre d'outils qui s'efface toute seule ----------------------------------
+const toolbar = document.getElementById('toolbar');
+let hideTimer = null;
+
+function showToolbar(duration = 1500) {
+  toolbar.classList.add('visible');
+  clearTimeout(hideTimer);
+  hideTimer = setTimeout(() => {
+    if (!toolbar.matches(':hover')) toolbar.classList.remove('visible');
+  }, duration);
+}
+
+window.addEventListener('mousemove', (e) => {
+  if (drag) return;
+  // La barre réapparaît quand la souris s'approche du bas de la fenêtre
+  if (e.clientY > window.innerHeight - 110 || toolbar.contains(e.target)) showToolbar();
+});
+toolbar.addEventListener('mouseleave', () => showToolbar(700));
+document.addEventListener('mouseleave', () => showToolbar(200));

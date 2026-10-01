@@ -50,12 +50,28 @@ let store = {
   favbarVisible: true,
   bounds: null,
   maximized: true,
+  settings: {},
 };
+
+// Paramètres par défaut (modifiables dans Paramètres)
+const DEFAULT_SETTINGS = {
+  startup: 'restore', // 'restore' | 'home' | 'newtab'
+  homeUrl: '',
+  homeButton: false,
+  newTabPage: 'start', // 'start' (page Odonavig) | 'home'
+  searchEngine: 'google',
+  defaultZoom: 1,
+  askDownload: false,
+  downloadDir: '',
+  doNotTrack: false,
+};
+const settings = () => ({ ...DEFAULT_SETTINGS, ...(store.settings || {}) });
 
 function loadStore() {
   try {
     const data = JSON.parse(fs.readFileSync(storePath(), 'utf8'));
     store = { ...store, ...data };
+    store.settings = settings();
   } catch {
     // Premier lancement : valeurs par défaut
   }
@@ -138,6 +154,8 @@ function setupMenu() {
       label: 'Odonavig',
       submenu: [
         { role: 'about', label: 'À propos d’Odonavig' },
+        { type: 'separator' },
+        { label: 'Réglages…', accelerator: 'Cmd+,', registerAccelerator: false, click: action('settings') },
         { type: 'separator' },
         { role: 'hide', label: 'Masquer Odonavig' },
         { role: 'hideOthers', label: 'Masquer les autres' },
@@ -309,6 +327,7 @@ function shortcutFor(input) {
   if (key === 'd') return 'bookmark';
   if (key === 'f') return 'find';
   if (key === 'p') return 'print';
+  if (key === ',') return 'settings';
   if (key === 'o') return 'open-file';
   if (input.shift && key === 'b') return 'toggle-favbar';
   if (key === '+' || key === '=' || code === 'NumpadAdd' || code === 'Equal') return 'zoom-in';
@@ -345,7 +364,10 @@ function buildContextMenu(contents, params) {
     t.push({ type: 'separator' });
   }
   if (params.mediaType === 'image' && params.srcURL) {
-    t.push({ label: 'Ouvrir l’image dans un nouvel onglet', click: () => openInNewTab(params.srcURL) });
+    const imageTabUrl = /^https?:/i.test(params.srcURL)
+      ? `odonavig://viewer/?url=${encodeURIComponent(params.srcURL)}`
+      : params.srcURL;
+    t.push({ label: 'Ouvrir l’image dans un nouvel onglet', click: () => openInNewTab(imageTabUrl) });
     t.push({ label: 'Copier l’image', click: () => contents.copyImageAt(params.x, params.y) });
     t.push({ label: 'Enregistrer l’image sous…', click: () => contents.downloadURL(params.srcURL) });
     t.push({ type: 'separator' });
@@ -457,18 +479,77 @@ async function serveFile(full) {
 // ---------------------------------------------------------------------------
 // Téléchargements
 // ---------------------------------------------------------------------------
+function uniquePath(dir, name) {
+  const ext = path.extname(name);
+  const base = path.basename(name, ext);
+  let candidate = path.join(dir, name);
+  for (let i = 1; fs.existsSync(candidate); i++) candidate = path.join(dir, `${base} (${i})${ext}`);
+  return candidate;
+}
+
 function setupDownloads() {
   session.defaultSession.on('will-download', (_event, item) => {
+    const s = settings();
+    // Sans « Demander où enregistrer », le fichier va directement dans le dossier choisi
+    if (!s.askDownload) {
+      const dir = s.downloadDir && fs.existsSync(s.downloadDir) ? s.downloadDir : app.getPath('downloads');
+      item.setSavePath(uniquePath(dir, item.getFilename()));
+    }
     item.once('done', (_e, state) => {
       send('download-done', { name: item.getFilename(), path: item.getSavePath(), state });
     });
   });
 }
 
+// « Ne pas me suivre » : demande aux sites de ne pas pister la navigation
+function setupPrivacyHeaders() {
+  session.defaultSession.webRequest.onBeforeSendHeaders((details, callback) => {
+    if (settings().doNotTrack) {
+      details.requestHeaders.DNT = '1';
+      details.requestHeaders['Sec-GPC'] = '1';
+    }
+    callback({ requestHeaders: details.requestHeaders });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Paramètres
+// ---------------------------------------------------------------------------
+ipcMain.handle('app:info', () => ({
+  version: app.getVersion(),
+  electron: process.versions.electron,
+  chrome: process.versions.chrome,
+  downloads: app.getPath('downloads'),
+  canSetDefault: isMac,
+  isDefault: isMac && app.isDefaultProtocolClient('https'),
+}));
+
+ipcMain.handle('dialog:choose-folder', async () => {
+  const result = await dialog.showOpenDialog(win, {
+    title: 'Dossier des téléchargements',
+    properties: ['openDirectory', 'createDirectory'],
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+
+ipcMain.handle('data:clear', async (_e, what) => {
+  const ses = session.defaultSession;
+  if (what.cache) await ses.clearCache();
+  if (what.cookies) await ses.clearStorageData();
+  return true;
+});
+
+ipcMain.handle('browser:set-default', () => {
+  if (!isMac) return false;
+  app.setAsDefaultProtocolClient('http');
+  app.setAsDefaultProtocolClient('https');
+  return app.isDefaultProtocolClient('https');
+});
+
 // ---------------------------------------------------------------------------
 // Communication avec l'interface
 // ---------------------------------------------------------------------------
-ipcMain.handle('store:get', () => store);
+ipcMain.handle('store:get', () => ({ ...store, settings: settings() }));
 ipcMain.on('store:set', (_e, key, value) => {
   store[key] = value;
   saveStore();
@@ -566,6 +647,7 @@ if (!app.requestSingleInstanceLock()) {
     pendingUrls = [...pendingUrls, ...urlsFromArgv(process.argv)];
     registerProtocol();
     setupDownloads();
+    setupPrivacyHeaders();
     createWindow();
   });
 
