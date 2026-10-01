@@ -416,6 +416,9 @@ function renderTabs() {
     close.className = 'close';
     close.title = 'Fermer (Ctrl + W)';
     close.innerHTML = '<svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+    // Le bouton ne doit pas déclencher la sélection de l'onglet (mousedown),
+    // sinon la liste est redessinée avant le clic et le ✕ disparaît sans rien fermer
+    close.addEventListener('mousedown', (e) => e.stopPropagation());
     close.addEventListener('click', (e) => {
       e.stopPropagation();
       closeTab(tab.id);
@@ -423,7 +426,7 @@ function renderTabs() {
 
     li.append(icon, title, close);
     li.addEventListener('mousedown', (e) => {
-      if (e.button === 0) activateTab(tab.id);
+      if (e.button === 0 && tab.id !== state.activeId) activateTab(tab.id);
     });
     li.addEventListener('auxclick', (e) => {
       if (e.button === 1) closeTab(tab.id);
